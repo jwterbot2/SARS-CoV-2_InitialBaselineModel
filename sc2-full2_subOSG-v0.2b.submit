@@ -1,0 +1,29 @@
+universe = vanilla
+STASH_LOC = stash:///osgconnect/public/jwterbot2
++SingularityImage = "/cvmfs/singularity.opensciencegrid.org/opensciencegrid/osgvo-ubuntu-20.04:latest"
+
+#job information
+executable = sc2-full-test_Wrapper-OSG.sh
+arguments = $(modNum) $(reqNum) $(recNum) $(pskNum) $(dfeNum) $(Step)
+transfer_input_files = $(STASH_LOC)/portableApps/slim.tar.gz, input/sc2-full2_sc2-sim-v0.2.slim, $(STASH_LOC)/input/sc2-full2_burnin25k.slout, /home/jwterbot2/python_env.tar.gz, input/sc2-full2_stats-v0.2.py
+transfer_output_files = sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_100.output.csv, sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_100.output.csv
+transfer_output_remaps = "sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_100.output.csv = $(STASH_LOC)/output-b/sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_100.output.csv; sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_100.output.csv = $(STASH_LOC)/output-b/sc2-full2_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step)_partial_1000.output.csv"
+
+
+#get back the files when done
+should_transfer_files = YES
+when_to_transfer_output = ON_EXIT
+
+#condor output, error, and log
+output = sc2-full-test_reports/sc2-full2_$(Cluster).$(Process)_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step).out
+error = sc2-full-test_reports/sc2-full2_$(Cluster).$(Process)_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step).err
+log = sc2-full-test_reports/sc2-full2_$(Cluster).$(Process)_$(modNum).$(reqNum).$(recNum).$(pskNum).$(dfeNum).$(Step).log
+
+#resources job needs
+request_cpus = 1
+request_disk = 8GB
+request_memory = 16GB
+
+#queue the jobs
+max_idle = 2000
+queue 5 modNum,reqNum,recNum,pskNum,dfeNum from sc2-full2b_params.csv
