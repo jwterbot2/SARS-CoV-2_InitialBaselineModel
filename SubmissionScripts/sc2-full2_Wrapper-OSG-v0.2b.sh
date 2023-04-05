@@ -6,8 +6,8 @@
 #SBATCH -o ../slurms/sc2-full-test.slurm.%j.out # file to save job's STDOUT (%j = JobId)
 #SBATCH -e ../slurms/sc2-full-test.slurm.%j.err # file to save job's STDERR (%j = JobId)
 #SBATCH --mail-type=ALL # Send an e-mail when a job starts, stops, or fails
-#SBATCH --mail-user=john.terbot.jwt2@gmail.com # Mail-to address
-#SBATCH --job-name=sc2-full-test_230111
+#SBATCH --mail-user=-----@gmail.com # Mail-to address
+#SBATCH --job-name=sc2-full
 
 
 #turn on debugging output
