@@ -1,1 +1,2 @@
-These are the bash and condor submit files used to run the simulations on the OSpool resources. v0.2 runs all models for 3 of the runtime parameter levels; v0.2b runs all models for the 4th runtime parameter level.
+These are the bash and condor submit files used to run the simulations on the OSpool resources. 
+v0.2 runs all models for 3 of the runtime parameter levels; v0.2b runs all models for the 4th runtime parameter level.
