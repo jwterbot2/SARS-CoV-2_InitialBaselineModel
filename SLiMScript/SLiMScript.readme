@@ -2,6 +2,11 @@ Example commandline call:
 slim -d MODEL=15 -d GENOMESIZE=30000 -d MU=1e-5 -d INIT=10 -d K=50 -d REPRO=1 -d RUNTIME=1800 -d R=1e-8 -d XI=0.1 -d BURSTN=10 -d CLASSN=2 -d "DFCLASS=c(1,1)" -d 'DFDISTR=c("return 0.0;", "return -1.0;")' -d 'BURNINPARAMS=c(0, 10000, 1000, "/testBurnIn.out")' sc2-full2_sc2-sim-v0.2.slim
 
  MODEL = 0 : No Recombination, No Progeny Skew, No DFE Classes, No Burn-In
+ 		- Requires: MU (Mutation rate)
+		- Requires: INIT (Initial population size or bottleneck size)
+		- Requires: K (Carrying capacity of main population)
+		- Requires: REPRO (Default number of offspring produced by each individual)
+		- Requires: RUNTIME (Number of ticks for simulation to run)
  MODEL += 1 : Adds Recombination 
 		- Requires: R (recombination rate)
  MODEL += 2 : Adds Progeny Skew 
