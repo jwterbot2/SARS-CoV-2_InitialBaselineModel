@@ -1,0 +1,475 @@
+initialize()
+{
+	//start the clock
+	defineGlobal("start", clock());
+	
+	//define logical (Boolean) constant for if in gui or not
+	defineConstant("GUI",exists("slimgui"));
+	
+	//local variable used during initialization to ensure model options are read in correctly
+	//exponent corresponds to number of available model options 
+	maxmodel =  2^4-1;
+	
+	//initialize nonWF model
+	initializeSLiMModelType("nonWF");
+
+	// !! GUI REQUIRED PARAMETER DEFINITION BLOCK !!
+	// !! Edit these to test in GUI !!
+	//define constants every model needs to begin, if running in GUI
+	if (GUI) 
+	{
+
+		//MODEL : Integer that will tell which model options to run
+		defineConstant("MODEL", 15);
+		//GENOMESIZE : Size of genome to simulate.
+		defineConstant("GENOMESIZE", 300);
+		//MU : Base mutation rate
+		defineConstant("MU", 1e-8);
+		//INIT : Initial population size, or number to draw if taking from BurnIn/Segmented Runs
+		defineConstant("INIT", 1000);
+		//K : Initial carrying capacity of first population
+		defineConstant("K", 1000);
+		//REPRO : Number of offspring each virion produces per tick
+		defineConstant("REPRO", 1);
+		//RUNTIME : Number of tick cycles to operate
+		defineConstant("RUNTIME", 10);
+		//OUTPUTSTEM : Default core name for output files
+		defineConstant("OUTPUTSTEM", "defaultOutput");
+	}
+
+	//define local variable that will be used to interpret the MODEL constant into a logical(Boolean)vector
+	modelChew = MODEL;
+	//check that the script is not receiving a request for an unimplemented model option.
+	if(modelChew > maxmodel)
+	{
+		//THROW ERROR
+		print("ERROR: requesting unimplemented options; cancelling run.");
+		asFloat("Model option requested doesn't exist.");
+	}
+
+
+	//interpret MODEL constant into logical (Boolean) vector for options
+	modelOpt = c();
+	do
+	{
+		//print(modelChew%2);
+		modelOpt = c(modelOpt, asInteger(modelChew%2)==1?T else F);
+		modelChew = floor(modelChew/2);
+		maxmodel = floor(maxmodel/2);
+	}
+	while(maxmodel > 0);
+
+	defineConstant("MODELOPTIONS", modelOpt);
+
+
+	//MODELMENU : List of model options and the number of parameters that option requires
+	defineConstant("MODELMENU", c("recombination",1 , "progeny skew", 2,  "dfe", 3, "burnin", 1));
+	//MODELPARAMS : List of parameters that model options require. While it is formatted as a list of lists, SLiM flattens this into a single list.
+	defineConstant("MODELPARAMS", c(c("R"), c("XI", "BURSTN"), c("CLASSN", "DFCLASS", "DFDISTR"), c("BURNINPARAMS")));
+	modelMenuPointer = 0;
+
+	// !! GUI OPTIONAL PARAMETER DEFINITION BLOCK !!
+	// !! Edit these to test in GUI !!
+	//define additional required parameters based on model options enabled, if running in GUI
+	if(GUI)
+	{
+		for(i in seq(0, size(MODELMENU)-1, 2))
+		{
+			option = i/2;
+			if(MODELOPTIONS[option])
+			{
+				//default GUI parameters
+				if(option==0)
+				{
+					defineConstant(MODELPARAMS[modelMenuPointer], 1e-8);
+				}
+				else if(option==1)
+				{
+					defineConstant(MODELPARAMS[modelMenuPointer], 1e-2);
+					defineConstant(MODELPARAMS[modelMenuPointer+1], 10);
+
+				}
+				else if(option==2)
+				{
+					defineConstant("CLASSN", 2);
+					defineConstant(MODELPARAMS[modelMenuPointer+1], c(1,10));
+					defineConstant(MODELPARAMS[modelMenuPointer+2], c("return 0.0;", "return -1.0;"));
+				}
+				else if(option==3)
+				{
+					defineConstant("BURNINPARAMS", c(2, 1000, 10, "testBurnIn.out"));
+				}
+			}
+			modelMenuPointer = modelMenuPointer + asInteger(MODELMENU[i+1]);
+		}
+	}
+
+	//reset model menu pointer
+	modelMenuPointer = 0;
+	
+	//very simple error checking for parameters; limited to checking that all required parameters for options being used have been defined and some formatting-checks for DFE parameters
+	for(i in seq(0, size(MODELMENU)-1, 2))
+	{
+		option = i/2;
+		
+		//only check these options if they are enabled; compiler will not realize this so some extra logic is required (nested if statements) to run
+		if(MODELOPTIONS[option])
+		{
+			//check if all required parameters have been given' throw error if not
+			for(j in 0:(asInteger(MODELMENU[i+1])-1))
+			{
+				if(!exists(MODELPARAMS[modelMenuPointer+j]))
+				{
+					//THROW ERROR
+					print("ERROR: " + MODELMENU[i] + " requires the parameter " + MODELPARAMS[modelMenuPointer+j] +". canceling run.");
+					asFloat(MODELPARAMS[modelMenuPointer+j]);
+				}
+			}
+			
+			//if using dfe option, check that CLASSN (number of dfe classes) is an integer
+			//nested if statements required for compiler to run, needs to ensure CLASSN exists before checking it
+			if(option==2 & exists("CLASSN"))
+			{
+				if(!isInteger(CLASSN))
+				{
+					//THROW ERROR
+					print("ERROR: CLASSN not an integer. canceling run.");
+					asFloat("dfe class number not integer");		
+				}				
+			}
+			
+			//if using dfe option, check that number of DFE classes corresponds to relative rate and distribution sizes
+			//nested if statements required similar to above reason
+			if(option==2 & exists("CLASSN") & exists("DFCLASS") & exists("DFDISTR"))
+			{
+				if(size(DFCLASS) != CLASSN | size(DFDISTR) != CLASSN)
+				{
+					//THROW ERROR
+					print("ERROR: mismatch between CLASSN and other dfe parameter. canceling run.");
+					asFloat("dfe class number mismatch");				
+				}
+			}
+			
+			if(option==3 & exists("BURNINPARAMS"))
+			{
+				defineConstant("BURNIN_N", asInteger(BURNINPARAMS[1]));
+				defineConstant("BURNIN_T", asInteger(BURNINPARAMS[2]));
+				if(BURNINPARAMS[0] >= 1)
+				{
+					defineConstant("BURNIN_SRC", BURNINPARAMS[3]);
+				}
+			}
+		}
+		//advance menu pointer to next set of model parameters in MODELPARAMS
+		modelMenuPointer = modelMenuPointer + asInteger(MODELMENU[i+1]);
+	}
+
+
+	//initialize parameters for model
+	//initialize mutation rate
+	initializeMutationRate(MU);
+
+	//initialize recombination rate
+	if(MODELOPTIONS[0])
+	{
+		initializeRecombinationRate(R);
+	}
+	else
+	{
+		//set recombination to zero if option is not being used
+		initializeRecombinationRate(0.0);
+	}
+
+	//initialize DFE, first genomic element type, and genomic element
+	//if no DFE being used, initialize genomic element type with only neutral mutations.
+	//logic for genome heterogeneity will go here if/when added
+	if(MODELOPTIONS[2])
+	{
+		for(i in 1:CLASSN)
+		{
+			initializeMutationType(i, 0.5, "s", DFDISTR[i-1]);
+		}
+		initializeGenomicElementType("g1", 1:CLASSN, DFCLASS);
+	}
+	else
+	{
+		initializeMutationType("m1", 0.5, "f", 0.0);
+		initializeGenomicElementType("g1", m1, 1);
+	}
+
+	initializeGenomicElement(g1, 0, GENOMESIZE-1);
+}
+
+//logic to run at beginning of first tick cycle to establish the script blocks to run
+//important inclusion for burn-in and other demographic events
+1 first()
+{
+	//set all mutation types to same stack group with last-in policy
+	for(mutType in community.allMutationTypes)
+	{
+		mutType.convertToSubstitution = T;
+		mutType.mutationStackGroup = 1;
+		mutType.mutationStackPolicy = "l";
+	}
+	//if a burnin is being used; determine how and register early events accordingly
+	if(MODELOPTIONS[3])
+	{
+		//register events for running from or with a burnin 
+		//WARNING: This may not function correctly when running with a burnin (option 0)
+		//recommend using a seperate burnin run and loading the output file from that (option 1).
+		if(BURNINPARAMS[0]<=1)
+		{
+			print("1 " + " " + BURNIN_T + " " + (BURNIN_T+1) + " " + (BURNIN_T+RUNTIME));
+			community.registerEarlyEvent(NULL, s102.source, 1, 1);
+			community.registerEarlyEvent(NULL, s103.source, 2, BURNIN_T);
+			community.registerEarlyEvent(NULL, s101.source, BURNIN_T+1, BURNIN_T+RUNTIME);
+			community.registerLateEvent(NULL, s0.source, BURNIN_T+RUNTIME, BURNIN_T+RUNTIME);
+		}
+		else if(BURNINPARAMS[0] == 2)
+		{
+			community.registerEarlyEvent(NULL, s100.source, 1, 1);
+			community.registerEarlyEvent(NULL, s101.source, 2, RUNTIME);
+			//if this simulation is being run as the burnin, periodically output the burnin population data in case the simulation is terminated early externally.
+			for(i in 1:49)
+			{
+				community.registerLateEvent(NULL, s1.source, asInteger(RUNTIME/50*i), asInteger(RUNTIME/50*i));
+			}
+			community.registerLateEvent(NULL, s1.source, RUNTIME, RUNTIME);
+		}
+		else if(BURNINPARAMS[0] == 3)
+		{
+			community.registerEarlyEvent(NULL, s102.source, 1, 1);
+			community.registerEarlyEvent(NULL, s101.source, 2, RUNTIME);
+			//if this simulation is being run as the burnin, periodically output the burnin population data in case the simulation is terminated early externally.
+			for(i in 1:49)
+			{
+				community.registerLateEvent(NULL, s1.source, asInteger(RUNTIME/50*i), asInteger(RUNTIME/50*i));
+			}
+			community.registerLateEvent(NULL, s1.source, RUNTIME, RUNTIME);
+		}
+		else
+		{
+			//THROW ERROR
+			print("ERROR: requested unavailable burn-in option. option must be 0, 1, 2, or 3. cancelling run.");
+			asFloat("unavailable burn-in option");			
+		}
+	}
+	else
+	{
+		community.registerEarlyEvent(NULL, s100.source, 1, 1);
+		community.registerEarlyEvent(NULL, s101.source, 2, RUNTIME);
+		community.registerLateEvent(NULL, s0.source, RUNTIME, RUNTIME);
+	}
+	community.deregisterScriptBlock(s0);
+	community.deregisterScriptBlock(s1);
+	community.deregisterScriptBlock(s100);
+	community.deregisterScriptBlock(s101);
+	community.deregisterScriptBlock(s102);
+	community.deregisterScriptBlock(s103);
+}
+
+//reproduction callback block that is used for all simulations regardless of model options
+reproduction()
+{
+	//check if progeny skew option is being used; if it is then draw a random number and if it is less than the value for XI, set local variable to do a burst reproduction event.
+	burst = F;
+	if(MODELOPTIONS[1] & exists("XI"))
+	{
+		if(runif(1) < XI)
+		{
+			burst = T;
+		}
+	}
+	//sample a single individual from the same subpopulation to serve as the recombination partner for all reproduction events of the current focus individual
+	recombPartner = subpop.sampleIndividuals(1);
+	//if a burst reproduction event is occurring, create BURSTN children, each with randomly drawn recombination breakpoints.
+	//otherwise, produce REPRO children
+	if(burst)
+	{
+		for(i in 1:BURSTN)
+		{
+			breaks = sim.chromosome.drawBreakpoints(individual);
+			subpop.addRecombinant(individual.genome1, recombPartner.genome1, breaks, NULL, NULL, NULL);
+		}
+	}
+	else if(REPRO > 0)
+	{
+		for(i in 1:REPRO)
+		{
+			breaks = sim.chromosome.drawBreakpoints(individual);
+			subpop.addRecombinant(individual.genome1, recombPartner.genome1, breaks, NULL, NULL, NULL);
+		}
+	}
+}
+
+//
+//VARIABLE CALLBACK BLOCK GUIDE
+//
+//s100: Default 1 early()
+//s101: Default early()
+//s102: BurnIn 1 early() (and reload/bottleneck)
+//s103: BurnIn early()
+//s0:	Default Output
+//s1:	BurnIn Output (Outputs full population to be read into another simulation)
+
+//create the initial population with size INIT; if this simulation is being run as a burnin create population p0, otherwise use population p1.
+s100 early()
+{
+	if(MODELOPTIONS[3])
+	{
+		if(BURNINPARAMS[0]==2)
+		{
+			sim.addSubpop("p0", INIT);
+		}
+		else
+		{
+			sim.addSubpop("p1", INIT);
+		}
+	}
+	else
+	{
+		sim.addSubpop("p1", INIT);
+	}
+}
+
+//prints debug output and scales subpopulations' fitness according to carrying capacity.
+s101 early()
+{
+	//debug output occurs every 10 and 100+1 ticks
+    x = community.tick;
+	if(x%10==0 | x%100==1)
+	{
+        print(x + " Early:");
+		print("Debug Output");
+		print("Mem Usage: " + usage(peak = F));
+		print("Runtime: " + (clock()-start));
+		if(MODELOPTIONS[3])
+		{
+			print("Population size: " + p0.individualCount);
+		}
+		else
+		{
+			print("Population size: " + p1.individualCount);
+		}
+	}
+	
+	//if burnin options are being used check if this simulation is being run as the burnin or is being run from a seperate burnin file.
+	//scale the relevant subpopulation's fitness accordingly
+	if(MODELOPTIONS[3])
+	{
+		if(BURNINPARAMS[0]>=2)
+		{
+			//scale fitness based on burnin population's carrying capacity
+			p0.fitnessScaling = K/p0.individualCount;
+		}
+		else
+		{
+			//scale fitness based on population's carrying capcity
+			p1.fitnessScaling = K/p1.individualCount;
+		}
+	}
+	//if no burnin options are being used, simply scale fitness of population p1 by carrying capacity
+	else
+	{
+		//scale fitness based on population's carrying capcity
+        p1.fitnessScaling = K/p1.individualCount;
+	}
+}
+
+//load from an ouput file from a previous burnin run; if the simulation is beginning, sample from that population INIT individuals and remove the burnin population from the simulation.
+//WARNING: The implementation for a simulation run with a burnin is not completed; it will not conduct the bottleneck from the burnin population to the simulation population.
+s102 early()
+{
+	if(BURNINPARAMS[0]>=1)
+	{
+		//debug output
+		print("Debug Output");
+		print("Preparing to read burnin file");
+		print("Runtime: " + (clock()-start));
+		sim.readFromPopulationFile(getwd() + "/" + BURNIN_SRC);
+		print("Burnin file read");
+		//set the tick to the 
+		community.tick = community.tick + 1;
+		print("Generation set to burn-in duration plus one:" + community.tick);
+		print("Runtime: " + (clock()-start));
+		
+		
+		if(BURNINPARAMS[0]==1)
+		{
+			sim.addSubpop("p1", 0);
+			p1.takeMigrants(p0.sampleIndividuals(INIT));
+			p0.removeSubpopulation();
+			p1.fitnessScaling = K/p1.individualCount;
+			print("bottleneck completed");
+			print("Mem Usage: " + usage(peak = F));
+			print("Runtime: " + (clock()-start));
+		}
+		else
+		{
+			p0.fitnessScaling = K/p0.individualCount;
+			x = community.tick;
+			print(x + " Early:");
+			print("Mem Usage: " + usage(peak = F));
+			print("Runtime: " + (clock()-start));
+		}
+	}
+	else
+	{
+		sim.addSubpop("p0", BURNIN_N);
+	}
+
+}
+
+//scale burnin population's fitness by burnin's carrying capacity
+s103 early()
+{
+	p0.fitnessScaling = BURNIN_N/p0.individualCount;
+}
+
+
+
+
+//output samples and fixed mutations at end of simulation
+s0 late()
+{
+	print("Default output");
+	print("Peak Mem Usage: " + usage(peak = T));
+	print("Runtime: " + (clock()-start));
+	print(size(p1.individuals));
+	
+	//output fixed mutations
+	sim.outputFixedMutations(filePath = getwd() +"/"+ OUTPUTSTEM + ".output.fix");
+	//output sample of 100
+	outputSample = sample(p1.individuals, 100);
+	outputSample.genome1.outputMS(filePath = getwd() +"/"+ OUTPUTSTEM + "_partial_100.output.ms", filterMonomorphic = F);
+	//output sample of 1000
+	outputSample = sample(p1.individuals, 1000);
+	outputSample.genome1.outputMS(filePath = getwd() +"/"+ OUTPUTSTEM + "_partial_1000.output.ms", filterMonomorphic = F);
+	//output full sample
+	//p1.individuals.genome1.outputMS(filePath = getwd() + "/" + OUTPUTSTEM + "_full.output.ms", filterMonomorphic = F);
+	print("Default output completed. Ending simulation now...");
+	print("Total Runtime: " + (clock()-start));
+}
+
+//output the full burnin population to a .ms file; alongside this also outputs fixed mutations and samples.
+s1 late()
+{
+	//debugging output
+	print(community.tick + " Late:");
+	print("Burn-in Run Output");
+	sim.outputFixedMutations();
+	print("Peak Mem Usage: " + usage(peak = T));
+	print("Runtime: " + (clock()-start));
+	sim.outputFull(getwd() + "/" + BURNIN_SRC + ".slout");
+	print("Burnin file written");
+	
+	//output fixed mutations
+	sim.outputFixedMutations(filePath = getwd() +"/"+ OUTPUTSTEM + ".output.fix");
+	//output sample of 100
+	outputSample = sample(p0.individuals, 100);
+	outputSample.genome1.outputMS(filePath = getwd() +"/"+ OUTPUTSTEM + "_partial_100.output.ms", filterMonomorphic = F);
+	//output sample of 1000
+	outputSample = sample(p0.individuals, 1000);
+	outputSample.genome1.outputMS(filePath = getwd() +"/"+ OUTPUTSTEM + "_partial_1000.output.ms", filterMonomorphic = F);
+	print("Other information written");
+}
