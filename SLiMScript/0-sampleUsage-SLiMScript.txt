@@ -1,0 +1,18 @@
+slim -d MODEL=15 -d GENOMESIZE=30000 -d MU=1e-5 -d INIT=10 -d K=50 -d REPRO=1 -d RUNTIME=1800 -d R=1e-8 -d XI=0.1 -d BURSTN=10 -d CLASSN=2 -d "DFCLASS=c(1,1)" -d 'DFDISTR=c("return 0.0;", "return -1.0;")' -d 'BURNINPARAMS=c(0, 10000, 1000, "/testBurnIn.out")' prototype3.slim
+ 
+ MODEL = 0 : No Recombination, No Progeny Skew, No DFE Classes, No Burn-In
+ MODEL += 1 : Adds Recombination 
+		- Requires: R (recombination rate)
+ MODEL += 2 : Adds Progeny Skew 
+		- Requires: XI (multiple coalescence rate)
+		- Requires: BURSTN (multiple coalescence size)
+ MODEL += 4 : Adds DFE Classes 
+		- Requires: CLASSN (number of DFE classes)
+		- Requires: DFCLASS (DFE classes's relative abundances)
+		- Requires: DFDISTR (strings defining DFE classes' distrubtions)
+ MODEL += 8 : Adds Burn-In 
+		- Requires: BURNINPARAMS (a vector of size "4" detailing the burn-in set-up being used)
+			[0] (burn-in style being used: 0, run w/ burn-in; 1, run from burnin; 2 run as burnin, 3 resume burnin)
+			[1] (burn-in population size; ignored when running as burn-in, K and INIT used instead)
+			[2] (burn-in duration; ignored when running as burn-in, RUNTIME used instead)
+			[3] (burn-in source; local location of output from prior burn-in run (if running from burn-in) or where to write burn-in result (if running as burn-in)
