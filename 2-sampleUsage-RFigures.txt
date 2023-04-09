@@ -1,0 +1,7 @@
+A series of R scripts to read the output from the python script into an R workspace. From there, statistics can be analyzed and plotted onto figures. The bulk of the work is done by "functionBooklet.R" which contains functions which create the required data structure and load the input files. The typical pipeline used to generate figures in [citation] is:
+
+1) Source functionBooklet.R to load required functions and other libraries.
+2) Source loadDataSlice.R to open and store requested data as detailed in functionBooklet.R's @getParameterSpace and @getRequestSpace functions. Changes to the requested data to store must be made by altering those functions.
+3) Source getFilteredModels.R to output a .txt file containing a list of models which clear the thresholds defined within getFilteredModels.R
+4) Source loadDataList.R to load only the models listed in the .txt output from getFilteredModels.R
+5) Source getFilteredModelsFigures.R to create two-panel figures of each model in the .txt output of getFilteredModels.R.

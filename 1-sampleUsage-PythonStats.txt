@@ -1,0 +1,9 @@
+Usage example for python script:
+
+python3 sc2-full2_stats-v0.2py [inputFile] m/v [genomeSize]
+
+1st argument is the input file without document type
+2nd argument is either "m" or "v" which declares the document type of the input file (.ms or .vcf)
+3rd argument is the size of the genome
+
+This is a script that primarily uses the scikit-allel library to calculate a variety of summary statisics from a .ms or .vcf file. It was primarily written to use .ms files generated from SLiM simulations and performs best on those input files. However, there is some rudimentary ability for it to also use .vcf files, but this functionality is not robust. A variety of command variables are declared at the bottom of the script before the @main function is called. Changes to these variables must be made to the script file itself; there is no implementation to change these from the command line. Documentation within the script describes what each of these command variables is for.
