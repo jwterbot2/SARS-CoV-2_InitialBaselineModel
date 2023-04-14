@@ -284,7 +284,7 @@ def main():
 	#Do stats work requiring output file from SLIM detailing # of fixed mutations
 	if (doNFixed):
 		inputFile = "_".join(fileStem.split("_")[0:2]) + ".output.fix";
-		runtime=int(outputBegin.split(',')[10]);
+		runtime=int(outputBegin.split(',')[10]) if outputParameterColumns else 1;
 		if debug: print(inputFile);
 		fixedAlleles = [];
 		with open(inputFile, 'r+') as fixFile:
