@@ -311,8 +311,11 @@ def main():
 		fixedAlleles = list(zip(*sorted(fixedAlleles, key=lambda x:x[0])));
 		fixCount = countFixed(fixedAlleles, burnintime, 1, genomeSize);
 		with open(outputCSV, 'a', encoding="utf-8") as outFile:
+			#fixBurnMuts = number of variants that arose during the burnin period and became fixed
 			outFile.write(f"{outputBegin_Full},fixBurnMuts,{fixCount[0]}\n");
+			#fixNewMuts = number of variants that arose and became fixed during the simulation
 			outFile.write(f"{outputBegin_Full},fixNewMuts,{fixCount[1]}\n");
+			#fixSampMuts = number of variants that were not fixed in the population, but appear fixed in the sample
 			outFile.write(f"{outputBegin_Full},fixSampMuts,{fixCount[2]}\n");
 		for windowSize, stepSize in zip(windowSizes, stepSizes):
 			if debug: print(f"{windowSize}, {stepSize}");
@@ -372,9 +375,13 @@ def main():
 					filteredUniqueHaplotypes = len(filteredHaplArray.distinct_counts());
 
 				with open(outputCSV, 'a', encoding="utf-8") as outFile:
+					#fixFiltMuts = number of variant sites that become fixed, new SNPs due to the MAF being above the max threshold (e.g., above 98% for a 2% threshold)
 					outFile.write(f"{outputBegin},full,{cutoff},1,{genomeSize},fixFiltMuts,{cnt-pvtCnt}\n");
+					#errFiltMuts = number of variant sites that erroneously become "fixed" as the reference allele due to the MAF being under the threshold
 					outFile.write(f"{outputBegin},full,{cutoff},1,{genomeSize},errFiltMuts,{pvtCnt}\n");
+					#filtSNPs = number of segregating variants clearing the filtering criteria
 					outFile.write(f"{outputBegin},full,{cutoff},1,{genomeSize},filtSNPs,{len(alleleCount)-cnt}\n");
+					#filtUniqHapl = number of unique haplotypes after filtering
 					if haplotypeInfo: outFile.write(f"{outputBegin},full,{cutoff},1,{genomeSize},filtUniqHapl,{filteredUniqueHaplotypes}\n");
 					if debug: print(f"Total to remove = {cnt}; Total private variants = {pvtCnt}");
 			elif (debug):
