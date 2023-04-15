@@ -352,7 +352,7 @@ def main():
 			if haplotypeInfo:
 				#Because of the structure of numpy arrays, it is much quicker if we construct an empty array
 				#of maximum size and then slice out the unneeded rows later.
-				filteredHaplArray = numpy.empty(shape = [len(alleleCount),1000]);
+				filteredHaplArray = numpy.empty(shape = [len(alleleCount), nSamp]);
 				curFiltVar  = 0;
 			minCt = (nSamp * cutoff)//1;
 			if (minCt>0):
