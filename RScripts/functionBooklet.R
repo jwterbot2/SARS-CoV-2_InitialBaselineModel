@@ -328,10 +328,13 @@ loadFromWorkspace <- function(filename)
 loadFromFiles <- function(file_cores, param_names, request_space, n_reps, infile_prefix, infile_suffix, infile_archive, missing_files)
 {
   Data_Storage = list();
-  for (file_core in file_cores)
+  
+  #For loop is done using iterator in order to preserve and pass along name information of the model cores which contains the parameter level information
+  for ( i in 1:length(file_cores))
   {
-    Cur_Branch = makeStorageBranch(file_core, param_names, request_space[[2]], request_space[[3]], n_reps, request_space[[4]], infile_prefix, infile_suffix, infile_archive, missing_files);
+    Cur_Branch = makeStorageBranch(file_cores[i], param_names, request_space[[2]], request_space[[3]], n_reps, request_space[[4]], infile_prefix, infile_suffix, infile_archive, missing_files);
     Data_Storage = append(Data_Storage, Cur_Branch);
+    
   }
   return(Data_Storage);
 }
@@ -351,7 +354,7 @@ getParameterSpace <- function()
   ReqdParams = setNames(list(setNames(list(setNames(list(1,1,1), list("Lo", "Md", "Hi")),
                                            setNames(list(1,1,1), list("Lo", "Md", "Hi")),
                                            setNames(list(1,1,1), list("Lo", "Md", "Hi")),
-                                           setNames(list(1,1,1), list("Lo", "Md", "Hi"))),
+                                           setNames(list(1,1,1,1), list("Lo", "Md", "Hi", "VLo"))),
                                       list("mu", "K", "init", "runtime"))), "ReqdParams");
   
   RecombParams = setNames(list(setNames(list(setNames(list(1,1,1), list("Lo", "Md", "Hi"))),
@@ -578,4 +581,141 @@ getBranchDiversityFigure_v1 <- function(data_branch, samplesize_to_get, windowsi
   combinedFig = grid.arrange(grobs = list(filtered_snps_fig, theta_pi_fig), ncol=2, widths = c(1,4));
   
   return(combinedFig);
+}
+
+#@getRequiredPlot_v1 Documentation
+{
+  #$samplesize_to_get : A single sample size for which to get the data
+  #$windowsize_to_get : A single window size for which to get the data
+  #$stat_to_get : Which statistic (from array in @getRequestSpace) is being used for this figure
+  #$mu_lvl : The (zero-) index of the mu value to use based on array in @getParameterSpace
+  #$K_lvl : The (zero-) index of the K value to use based on array in @getParameterSpace
+  #$init_lvl : The (zero-) index of the init value to use based on array in @getParameterSpace
+  #Generates plots for all models of a given set of required parameters (but all runtime values), partly hardcoded with values specific to the original study regarding the vertical lines that seperate the runtime categories
+  #<-Returns:
+  #$figure : The requested figure
+}
+getRequiredPlot_v1 <- function(samplesize_to_get, windowsize_to_get, stat_to_get, mu_lvl=0, K_lvl=0, init_lvl=0, filt_val = 0.02, ymax = NULL, plot_data=NULL)
+{
+  if(is.null(plot_data))
+  {
+    plot_data = getRequiredPlotDataFrame(samplesize_to_get, windowsize_to_get, stat_to_get, mu_lvl, K_lvl, init_lvl, filt_val);
+  }
+  if(is.null(ymax))
+  {
+    ymax = max(plot_data$Max) + 10
+  }
+  figure = ggplot(data=plot_data) + geom_segment(aes(x = x, xend = x, y = Min, yend = Max)) + geom_point(aes(x=x, y=Mean), size = 0.5) + 
+    geom_vline(xintercept=c(117, 239, 361), color = "grey50", linetype = "dashed") + geom_hline(yintercept=5, color = "blue") + 
+    theme_bw() + labs(y = "SNPs") +  ylim(0,ymax) +
+    theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(), panel.grid = element_blank());
+  return(figure)
+}
+
+#@getRequiredPlot_v1_wColor Documentation
+{
+  #$samplesize_to_get : A single sample size for which to get the data
+  #$windowsize_to_get : A single window size for which to get the data
+  #$stat_to_get : Which statistic (from array in @getRequestSpace) is being used for this figure
+  #$mu_lvl : The (zero-) index of the mu value to use based on array in @getParameterSpace
+  #$K_lvl : The (zero-) index of the K value to use based on array in @getParameterSpace
+  #$init_lvl : The (zero-) index of the init value to use based on array in @getParameterSpace
+  #Generates same plot as @getRequiredPlot_v1 but with line segments colored based on model complexity
+}
+getRequiredPlot_v1_wColor <- function(samplesize_to_get, windowsize_to_get, stat_to_get, mu_lvl=0, K_lvl=0, init_lvl=0, filt_val = 0.02, ymax = NULL, plot_data=NULL)
+{
+  if(is.null(plot_data))
+  {
+    plot_data = getRequiredPlotDataFrame(samplesize_to_get, windowsize_to_get, stat_to_get, mu_lvl, K_lvl, init_lvl, filt_val);
+  }
+  if(is.null(ymax))
+  {
+    ymax = max(plot_data$Max) + 10
+  }
+  #Add column with hard-coded values of model complexity (i.e. only works with the specific model set used in the original study)
+  plot_data["compl"] = c(rep("Bottleneck",4), rep("Recombination",12), rep("ProgSkew", 108), rep("DFE", 324))
+  ggplot(data=plot_data) + geom_segment(aes(x = x, xend = x, y = Min, yend = Max, color = compl)) + geom_point(aes(x=x, y=Mean), size = 0.5) + 
+    geom_vline(xintercept=c(117, 239, 361), color = "grey50", linetype = "dashed") + geom_hline(yintercept=5, color = "blue") + 
+    theme_bw() + labs(y = "SNPs") +  ylim(0,ymax) +
+    theme(axis.title.x=element_blank(), axis.text.x=element_blank(), axis.ticks.x=element_blank(), panel.grid = element_blank());
+}
+
+#@getRequiredPlotDataFrame Documentation
+{
+  #$samplesize_to_get : A single sample size for which to get the data
+  #$windowsize_to_get : A single window size for which to get the data
+  #$stat_to_get : Which statistic (from array in @getRequestSpace) is being used for this figure
+  #$mu_lvl : The (zero-) index of the mu value to use based on array in @getParameterSpace
+  #$K_lvl : The (zero-) index of the K value to use based on array in @getParameterSpace
+  #$init_lvl : The (zero-) index of the init value to use based on array in @getParameterSpace
+  #<-Returns:
+  #$plot_data : The min/max/mean data for the requested required parameter space across all run-times for the requested sample size, window size, and statistic.
+}
+getRequiredPlotDataFrame <- function(samplesize_to_get, windowsize_to_get, stat_to_get, mu_lvl, K_lvl, init_lvl, filt_val = 0.02)
+{
+  getData <- function(model_prefix, required_array, model_suffix, x_offsets, cur_x, filter_value)
+  {
+    tmp_data = data.frame("Name" = character(), "x" = numeric(), "Min" = numeric(), "Max" = numeric(), "Mean" = numeric());
+    for (i in 1:length(required_array))
+    {
+      cur_model = paste(model_prefix, ".", required_array[i], ".", model_suffix, sep = "");
+      cur_data = getStatForBranch(Data_Storage[cur_model], samplesize_to_get, windowsize_to_get, stat_to_get)
+      if(!is.null(cur_data))
+      {
+        if(stat_to_get == "filtSNPs")
+        {
+          cur_data = subset(cur_data, filter==filter_value);
+        }
+        tmp_data[nrow(tmp_data)+1,] = list(cur_model, x_offsets[i] + cur_x, min(cur_data$value), max(cur_data$value), mean(cur_data$value));
+      }
+      else
+      {
+        print("No Data");
+        #tmp_data[nrow(tmp_data)+1,] = list(cur_model, x_offsets[i] + cur_x, 0, 0, 0); #This line will add a bump at the x-axis for models missing all data
+        tmp_data[nrow(tmp_data)+1,] = list(cur_model, x_offsets[i] + cur_x, NA, NA, NA); #This line will add a row of NAs for models missing all data
+      }
+    }
+    return(tmp_data);
+  }
+  plot_data = data.frame("Name" = character(), "x" = numeric(), "Min" = numeric(), "Max" = numeric(), "Mean" = numeric());
+  cur_x = 1;
+  x_off = c(0, 122, 244, 366);
+  req_base = (1*mu_lvl)+(3*K_lvl)+(9*init_lvl);
+  req_ary = c((req_base+81), req_base, (req_base+27), (req_base+54));
+  
+  #Bottleneck Models
+  plot_data = rbind(plot_data, getData("8", req_ary, "-1.-1.-1", x_off, cur_x, filt_val));
+  cur_x = cur_x + 1;
+  
+  #Recombination Models
+  for(recomb_lvl in 0:2)
+  {
+    plot_data = rbind(plot_data, getData("9", req_ary, paste(recomb_lvl,".-1.-1", sep=""), x_off, cur_x, filt_val));
+    cur_x = cur_x + 1;
+  }
+  
+  #Progeny Skew Models
+  for(pskew_lvl in 0:8)
+  {
+    for(recomb_lvl in 0:2)
+    {
+      plot_data = rbind(plot_data, getData("11", req_ary, paste(recomb_lvl,".",pskew_lvl,".-1", sep=""), x_off, cur_x, filt_val));
+      cur_x = cur_x + 1;
+    }
+  }
+  
+  #DFE Models
+  for(dfe_lvl in 0:2)
+  {
+    for(pskew_lvl in 0:8)
+    {
+      for(recomb_lvl in 0:2)
+      {
+        plot_data = rbind(plot_data, getData("15", req_ary, paste(recomb_lvl,".",pskew_lvl,".",dfe_lvl, sep=""), x_off, cur_x, filt_val));
+        cur_x = cur_x + 1;
+      }
+    }
+  }
+  
+  return(plot_data);
 }
