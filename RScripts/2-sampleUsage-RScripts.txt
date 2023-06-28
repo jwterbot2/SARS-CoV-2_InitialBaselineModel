@@ -11,3 +11,5 @@ data structure and load the input files. The typical pipeline used to generate f
 4) Source loadDataList.R to load only the models listed in the .txt output from getFilteredModels.R
 5) Source getFilteredModelsFigures.R to create two-panel figures of each model in the .txt output of getFilteredModels.R for
    visual inspection of individual, plausible models.
+
+A copy of the data for the number of segregating SNPs after filtering for each replicate is included as the "filteredSNPs.RData" file.
