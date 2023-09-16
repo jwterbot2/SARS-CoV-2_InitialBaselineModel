@@ -339,13 +339,21 @@ s101 early()
     x = community.tick;
 	if(x%10==0 | x%100==1)
 	{
-        print(x + " Early:");
+        	print(x + " Early:");
 		print("Debug Output");
 		print("Mem Usage: " + usage(peak = F));
 		print("Runtime: " + (clock()-start));
 		if(MODELOPTIONS[3])
 		{
-			print("Population size: " + p0.individualCount);
+			//quick fix so this debugging output runs correctly when using a burnin file
+			if(BURNINPARAMS[0]>=2)
+			{
+				print("Population size: " + p0.individualCount);
+			}
+			else
+			{
+				print("Population size: " + p1.individualCount);
+			}
 		}
 		else
 		{
